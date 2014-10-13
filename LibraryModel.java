@@ -30,7 +30,10 @@ public class LibraryModel {
 					" file is not in my CLASSPATH");
 		}
 		//Establish a Connection
-		String url = "jdbc:postgresql:" + "//db.ecs.vuw.ac.nz/" + userid + "_jdbc";
+		//Use this url at university.
+		//String url = "jdbc:postgresql:" + "//db.ecs.vuw.ac.nz/" + userid + "_jdbc";
+		//Use this url at home.
+		String url = "jdbc:postgresql:" + "//localhost:5432/postgres";
 		try{
 			connect = DriverManager.getConnection(url, userid, password);
 			System.out.println("Successfully connected to the Database. ");
