@@ -79,7 +79,33 @@ public class LibraryModel {
 	}
 
 	public String showCatalogue() {
-		return "Show Catalogue Stub";
+		//Show all the books
+		String allBooks = "Show Catalogue: \n\n"; 
+
+		try {
+			// Create a Statement object
+			Statement s = connect.createStatement();
+			// Execute the Statement object
+			ResultSet rs = s.executeQuery(
+					"SELECT * FROM Book as book, (SELECT STRING_AGG(surname, ', ' ORDER BY AuthorSeqNo ASC) AS authorNames "
+							+ "FROM Book_Author NATURAL JOIN Author " 
+							+ ") AS authorTable ORDER BY isbn ASC;"
+					);
+			// Handle query answer in ResultSet object
+			while (rs.next()){
+				//Format the answer
+				allBooks += String.format("%d: %s \n"
+						+ "\tEdition: %d - Number of copies: %d - Copies left: %d\n"
+						+ "\tAuthors: %s\n", rs.getInt("isbn"),rs.getString("title"),rs.getInt("Edition_No"),
+						rs.getInt("numOfCop"),rs.getInt("numLeft"),rs.getString("authorNames"));
+			}
+
+			// End of the try block
+		} catch (SQLException sqlex){
+			System.out.println(sqlex.getMessage());
+		}
+
+		return allBooks;
 	}
 
 	public String showLoanedBooks() {
