@@ -33,9 +33,9 @@ public class LibraryModel {
 
 		//Establish a Connection
 		//Use this url at university.
-		//String url = "jdbc:postgresql:" + "//db.ecs.vuw.ac.nz/" + userid + "_jdbc";
+		String url = "jdbc:postgresql:" + "//db.ecs.vuw.ac.nz/" + userid + "_jdbc";
 		//Use this url at home.
-		String url = "jdbc:postgresql:" + "//localhost:5432/postgres";
+		//String url = "jdbc:postgresql:" + "//localhost:5432/postgres";
 
 		try {
 			connect = DriverManager.getConnection(url, userid, password);
@@ -49,7 +49,7 @@ public class LibraryModel {
 
 	public String bookLookup(int isbn) {
 		//Book result
-		String bookResult = "No such ISBN: " + isbn;
+		String bookResult = "Book Lookup:\n\tNo such ISBN: " + isbn;
 
 		try {
 			// Create a Statement object
@@ -64,9 +64,10 @@ public class LibraryModel {
 			// Handle query answer in ResultSet object
 			while (rs.next()){
 				//Format the answer
-				bookResult = String.format("%d: %s \n"
-						+ "Edition: %d - Number of copies: %d - Copies left: %d\n"
-						+ "Authors: %s", rs.getInt("isbn"),rs.getString("title"),rs.getInt("Edition_No"),
+				bookResult = String.format("Book Lookup:\n"
+						+ "\t%d: %s \n"
+						+ "\tEdition: %d - Number of copies: %d - Copies left: %d\n"
+						+ "\tAuthors: %s", rs.getInt("isbn"),rs.getString("title"),rs.getInt("Edition_No"),
 						rs.getInt("numOfCop"),rs.getInt("numLeft"),rs.getString("authorNames"));
 			}
 
@@ -80,7 +81,7 @@ public class LibraryModel {
 
 	public String showCatalogue() {
 		//Show all the books
-		String allBooks = "Show Catalogue: \n\n"; 
+		String allBooks = "Show Catalogue: \n\n";
 
 		try {
 			// Create a Statement object
@@ -94,14 +95,17 @@ public class LibraryModel {
 							+ "ON Book.isbn = authorTable.isbn "
 							+ "ORDER BY Book.isbn;"
 					);
-
+			// Result is empty
+			if (!rs.isBeforeFirst()){
+				return "Show Catalogue:\n(No Books)";
+			}
 			// Handle query answer in ResultSet object
 			while (rs.next()){
 				//Format the answer
 				allBooks += String.format("%d: %s \n"
 						+ "\tEdition: %d - Number of copies: %d - Copies left: %d\n"
 						+ "\tAuthors: %s\n", rs.getInt("isbn"),rs.getString("title"),rs.getInt("Edition_No"),
-						rs.getInt("numOfCop"),rs.getInt("numLeft"), 
+						rs.getInt("numOfCop"),rs.getInt("numLeft"),
 						//Check if there are any authors - prints appropriate message
 						rs.getString("authorNames") == null? "(No authors)": rs.getString("authorNames"));
 			}
@@ -115,7 +119,44 @@ public class LibraryModel {
 	}
 
 	public String showLoanedBooks() {
-		return "Show Loaned Books Stub";
+		//Show loaned the books
+		String loanedBooks = "Show Loaned Books: \n\n";
+
+		try {
+			// Create a Statement object
+			Statement s = connect.createStatement();
+			// Execute the Statement object
+			ResultSet rs = s.executeQuery(
+					"SELECT * "
+							+ "FROM Cust_Book NATURAL JOIN Book AS loanedBooks NATURAL JOIN customer LEFT JOIN "
+							+ " (SELECT STRING_AGG(surname,', ' ORDER BY AuthorSeqNo ASC) AS authorNames, isbn "
+							+  " FROM Book_Author NATURAL JOIN Author GROUP BY isbn) as authorTable ON authorTable.isbn = loanedBooks.isbn "
+							+ "ORDER BY loanedBooks.isbn ASC;"
+					);
+			// Result is empty
+			if (!rs.isBeforeFirst()){
+				return "Show Loaned Books:\n(No Loaned Books)";
+			}
+			// Handle query answer in ResultSet object
+			while (rs.next()){
+				//Format the answer
+				loanedBooks += String.format("%d: %s \n"
+						+ "\tEdition: %d - Number of copies: %d - Copies left: %d\n"
+						+ "\tAuthors: %s\n"
+						+ "\tBorrowers:\n"
+						+ "\t\t%d: %s, %s - %s\n", rs.getInt("isbn"),rs.getString("title"),rs.getInt("Edition_No"),
+						rs.getInt("numOfCop"),rs.getInt("numLeft"),
+						//Check if there are any authors - prints appropriate message
+						rs.getString("authorNames") == null? "(No authors)": rs.getString("authorNames")
+								,rs.getInt("customerId"), rs.getString("L_Name").trim(), rs.getString("F_Name").trim(), rs.getString("City"));
+			}
+
+			// End of the try block
+		} catch (SQLException sqlex){
+			System.out.println(sqlex.getMessage());
+		}
+
+		return loanedBooks;
 	}
 
 	public String showAuthor(int authorID) {
