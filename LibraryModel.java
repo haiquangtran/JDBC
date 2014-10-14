@@ -87,9 +87,12 @@ public class LibraryModel {
 			Statement s = connect.createStatement();
 			// Execute the Statement object
 			ResultSet rs = s.executeQuery(
-					"SELECT * FROM Book as book, (SELECT STRING_AGG(surname, ', ' ORDER BY AuthorSeqNo ASC) AS authorNames "
-							+ "FROM Book_Author NATURAL JOIN Author " 
-							+ ") AS authorTable ORDER BY isbn ASC;"
+					"SELECT *, authorNames FROM Book, "
+					+ "(SELECT STRING_AGG(surname,', ' ORDER BY AuthorSeqNo ASC) AS authorNames, isbn "
+					+ "FROM Book_Author NATURAL JOIN Author "
+					+ "GROUP BY isbn) as authorTable "
+					+ "WHERE Book.isbn = authorTable.isbn "
+					+ "ORDER BY Book.isbn;"
 					);
 			// Handle query answer in ResultSet object
 			while (rs.next()){
