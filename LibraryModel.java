@@ -87,20 +87,23 @@ public class LibraryModel {
 			Statement s = connect.createStatement();
 			// Execute the Statement object
 			ResultSet rs = s.executeQuery(
-					"SELECT *, authorNames FROM Book, "
-					+ "(SELECT STRING_AGG(surname,', ' ORDER BY AuthorSeqNo ASC) AS authorNames, isbn "
-					+ "FROM Book_Author NATURAL JOIN Author "
-					+ "GROUP BY isbn) as authorTable "
-					+ "WHERE Book.isbn = authorTable.isbn "
-					+ "ORDER BY Book.isbn;"
+					"SELECT *, authorNames FROM Book LEFT JOIN "
+							+ "(SELECT STRING_AGG(surname,', ' ORDER BY AuthorSeqNo ASC) AS authorNames, isbn "
+							+ "FROM Book_Author NATURAL JOIN Author "
+							+ "GROUP BY isbn) as authorTable "
+							+ "ON Book.isbn = authorTable.isbn "
+							+ "ORDER BY Book.isbn;"
 					);
+
 			// Handle query answer in ResultSet object
 			while (rs.next()){
 				//Format the answer
 				allBooks += String.format("%d: %s \n"
 						+ "\tEdition: %d - Number of copies: %d - Copies left: %d\n"
 						+ "\tAuthors: %s\n", rs.getInt("isbn"),rs.getString("title"),rs.getInt("Edition_No"),
-						rs.getInt("numOfCop"),rs.getInt("numLeft"),rs.getString("authorNames"));
+						rs.getInt("numOfCop"),rs.getInt("numLeft"), 
+						//Check if there are any authors - prints appropriate message
+						rs.getString("authorNames") == null? "(No authors)": rs.getString("authorNames"));
 			}
 
 			// End of the try block
