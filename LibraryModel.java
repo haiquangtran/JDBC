@@ -31,9 +31,9 @@ public class LibraryModel {
 		}
 		//Establish a Connection
 		//Use this url at university.
-		//String url = "jdbc:postgresql:" + "//db.ecs.vuw.ac.nz/" + userid + "_jdbc";
+		String url = "jdbc:postgresql:" + "//db.ecs.vuw.ac.nz/" + userid + "_jdbc";
 		//Use this url at home.
-		String url = "jdbc:postgresql:" + "//localhost:5432/postgres";
+		//String url = "jdbc:postgresql:" + "//localhost:5432/postgres";
 		try{
 			connect = DriverManager.getConnection(url, userid, password);
 			System.out.println("Successfully connected to the Database. ");
@@ -45,7 +45,35 @@ public class LibraryModel {
 	}
 
 	public String bookLookup(int isbn) {
-		return "Lookup Book Stub";
+		try{
+			// Create a Statement object
+			Statement s = connect.createStatement();
+			// Execute the Statement object
+			ResultSet rs = s.executeQuery(
+					"SELECT * FROM (SELECT STRING_AGG(surname, ', ' ORDER BY AuthorSeqNo  ASC) AS authorNames "
+							+ "FROM Book_Author NATURAL JOIN Author WHERE ISBN = " + isbn
+							+ ") AS authorTable , Book WHERE ISBN = " + isbn + ";"
+					);
+
+
+			// Handle query answer in ResultSet object
+			String bookResult = "";
+
+			while (rs.next()){
+				System.out.println(rs.getString("Title"));
+				//				bookResult = String.format("%i: %s \n"
+				//						+ "Edition: %i - Number of copies: %i - Copies left: %i\n"
+				//						+ "Authors: %s.", rs.getInt(isbn),rs.getString("title"),rs.getInt("Edition_No"),
+				//						rs.getInt("numOfCop"),rs.getInt("numLeft"),rs.getString("authorNames"));
+			}
+
+			return bookResult;
+			// End of the try block
+		} catch (SQLException sqlex){
+			System.out.println(sqlex.getMessage());
+		}
+
+		return "No such ISBN: " + isbn;
 	}
 
 	public String showCatalogue() {
