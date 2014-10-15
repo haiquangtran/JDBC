@@ -34,9 +34,9 @@ public class LibraryModel {
 
 		//Establish a Connection
 		//Use this url at university.
-		//String url = "jdbc:postgresql:" + "//db.ecs.vuw.ac.nz/" + userid + "_jdbc";
+		String url = "jdbc:postgresql:" + "//db.ecs.vuw.ac.nz/" + userid + "_jdbc";
 		//Use this url at home.
-		String url = "jdbc:postgresql:" + "//localhost:5432/postgres";
+		//String url = "jdbc:postgresql:" + "//localhost:5432/postgres";
 
 		try {
 			connect = DriverManager.getConnection(url, userid, password);
@@ -73,7 +73,7 @@ public class LibraryModel {
 						//Check if there are any authors - prints appropriate message
 						rs.getString("authorNames") == null? "(No authors)": rs.getString("authorNames"));
 			}
-
+			s.close();
 			// End of the try block
 		} catch (SQLException sqlex){
 			System.out.println(sqlex.getMessage());
@@ -112,7 +112,7 @@ public class LibraryModel {
 						//Check if there are any authors - prints appropriate message
 						rs.getString("authorNames") == null? "(No authors)": rs.getString("authorNames"));
 			}
-
+			s.close();
 			// End of the try block
 		} catch (SQLException sqlex){
 			System.out.println(sqlex.getMessage());
@@ -130,11 +130,16 @@ public class LibraryModel {
 			Statement s = connect.createStatement();
 			// Execute the Statement object
 			ResultSet rs = s.executeQuery(
-					"SELECT * "
-							+ "FROM Cust_Book NATURAL JOIN Book AS loanedBooks NATURAL JOIN customer LEFT JOIN "
-							+ " (SELECT STRING_AGG(surname,', ' ORDER BY AuthorSeqNo ASC) AS authorNames, isbn "
-							+  " FROM Book_Author NATURAL JOIN Author GROUP BY isbn) as authorTable ON authorTable.isbn = loanedBooks.isbn "
-							+ "ORDER BY loanedBooks.isbn ASC;"
+					" SELECT DISTINCT loanedBooks.isbn, title,edition_no,authorNames, numofcop, numLeft, borrowers  "
+							+	" FROM Cust_Book NATURAL JOIN Book AS loanedBooks NATURAL JOIN customer LEFT JOIN "
+							+	" (SELECT STRING_AGG(surname,', ' ORDER BY AuthorSeqNo ASC) AS authorNames, isbn "
+							+	 " FROM Book_Author NATURAL JOIN Author GROUP BY isbn) as authorTable "
+							+	" ON authorTable.isbn = loanedBooks.isbn "
+							+	" LEFT JOIN (SELECT STRING_AGG(customerid || ': ' || l_name || ', ' || f_name || ' - ' || city,'\n\t\t'"
+							+	" ORDER BY customerid ASC) AS borrowers, isbn "
+							+	" FROM Cust_Book NATURAL JOIN Customer GROUP BY isbn) as borrowersTable"
+							+	" ON borrowersTable.isbn = loanedBooks.isbn "
+							+	" ORDER BY loanedBooks.isbn ASC;"
 					);
 			// Result is empty
 			if (!rs.isBeforeFirst()){
@@ -147,13 +152,13 @@ public class LibraryModel {
 						+ "\tEdition: %d - Number of copies: %d - Copies left: %d\n"
 						+ "\tAuthors: %s\n"
 						+ "\tBorrowers:\n"
-						+ "\t\t%d: %s, %s - %s\n", rs.getInt("isbn"),rs.getString("title"),rs.getInt("Edition_No"),
+						+ "\t\t%s\n", rs.getInt("isbn"),rs.getString("title"),rs.getInt("Edition_No"),
 						rs.getInt("numOfCop"),rs.getInt("numLeft"),
 						//Check if there are any authors - prints appropriate message
 						rs.getString("authorNames") == null? "(No authors)": rs.getString("authorNames")
-								,rs.getInt("customerId"), rs.getString("L_Name").trim(), rs.getString("F_Name").trim(), rs.getString("City"));
+								,rs.getString("borrowers"));
 			}
-
+			s.close();
 			// End of the try block
 		} catch (SQLException sqlex){
 			System.out.println(sqlex.getMessage());
@@ -186,7 +191,7 @@ public class LibraryModel {
 						//Check if author has written any books - prints appropriate message
 						rs.getString("allTitles") == null? "(no books written)" : rs.getString("allTitles"));
 			}
-
+			s.close();
 			// End of the try block
 		} catch (SQLException sqlex){
 			System.out.println(sqlex.getMessage());
@@ -214,7 +219,7 @@ public class LibraryModel {
 				//Format the answer
 				authors += String.format("\n\t%d: %s, %s ", rs.getInt("authorId"), rs.getString("surname").trim(), rs.getString("name").trim());
 			}
-
+			s.close();
 			// End of the try block
 		} catch (SQLException sqlex){
 			System.out.println(sqlex.getMessage());
@@ -249,7 +254,7 @@ public class LibraryModel {
 								//Check if customer has borrowed any books - prints appropriate message
 								rs.getString("booksBorrowed") == null? "(No books borrowed)" : rs.getString("booksBorrowed"));
 			}
-
+			s.close();
 			// End of the try block
 		} catch (SQLException sqlex){
 			System.out.println(sqlex.getMessage());
@@ -280,7 +285,7 @@ public class LibraryModel {
 						//Check if city exists - prints appropriate message
 						rs.getString("city") == null? "(no city)" : rs.getString("city"));
 			}
-
+			s.close();
 			// End of the try block
 		} catch (SQLException sqlex){
 			System.out.println(sqlex.getMessage());
@@ -327,8 +332,8 @@ public class LibraryModel {
 			// Insert appropriate tuple in the Cust_Book table
 			String insert = "INSERT INTO Cust_Book VALUES(" + isbn + "," + String.format("to_date('%d-%d-%d', 'YYYY-MM-DD')", year,month,day) + "," + customerID + ");";
 			s.executeUpdate(insert);
-			// Dialog box - to stall the processing of the program 
-			JOptionPane.showMessageDialog(dialogParent, "Locked tuples.");
+			// Dialog box - to stall the processing of the program
+			JOptionPane.showMessageDialog(dialogParent, "Locked tuple(s), ready to update. Click OK to continue");
 			// Update the Book table
 			String update = "UPDATE Book SET NumLeft = NumLeft-1 WHERE isbn =" + isbn + ";";
 			s.executeUpdate(update);
@@ -336,7 +341,16 @@ public class LibraryModel {
 			connect.commit();
 			connect.setAutoCommit(true);
 
-			return book + "\n\tYou are now borrowing the book. ";
+			// Return the message with correct format
+			ResultSet rMessage = s.executeQuery("SELECT * FROM Cust_Book NATURAL JOIN Customer NATURAL JOIN Book WHERE customerID = " + customerID + " "+ ";");
+			while (rMessage.next()){
+				book += String.format("\n\tBook: %d (%s)\n\tLoaned to: %d (%s %s)\n\tDue Date: %d",
+						rMessage.getInt("isbn"),rMessage.getString("title"), rMessage.getInt("customerID"),
+						rMessage.getString("f_name"), rMessage.getString("l_name"),rMessage.getString("duedate"));
+			}
+			s.close();
+
+			return book;
 			// End of the try block
 		} catch (SQLException sqlex){
 			System.out.println(sqlex.getMessage());
@@ -349,7 +363,7 @@ public class LibraryModel {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
+
 		// Only path left is that customer is already borrowing the book
 		return book + "\n\tCustomer is already borrowing the book. ";
 	}
@@ -389,7 +403,7 @@ public class LibraryModel {
 			// Insert appropriate tuple in the Cust_Book table
 			String delete = "DELETE FROM Cust_Book WHERE isbn = " + isbn + " AND customerID = " + customerID + ";";
 			s.executeUpdate(delete);
-			// Dialog box - to stall the processing of the program 
+			// Dialog box - to stall the processing of the program
 			JOptionPane.showMessageDialog(dialogParent, "Book Returned.");
 			// Update the Book table
 			String update = "UPDATE Book SET NumLeft = NumLeft + 1 WHERE isbn =" + isbn + ";";
@@ -411,16 +425,18 @@ public class LibraryModel {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
+
 		// Only path left is that customer is already borrowing the book
 		return book;
 	}
 
 	public void closeDBConnection() {
-		//Close all connections 
+		//Close all connections
 		try {
-			System.out.println("Successfully disconnected from the Database.");
-			connect.close();
+			if (connect != null){
+				System.out.println("Successfully disconnected from the Database.");
+				connect.close();
+			}
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
