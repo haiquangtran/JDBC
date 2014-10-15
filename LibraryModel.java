@@ -354,8 +354,66 @@ public class LibraryModel {
 		return book + "\n\tCustomer is already borrowing the book. ";
 	}
 
-	public String returnBook(int isbn, int customerid) {
-		return "Return Book Stub";
+	public String returnBook(int isbn, int customerID) {
+		String book = "Return Book:";
+
+		try {
+			//BEGIN;
+			connect.setAutoCommit(false);
+
+			// Create a Statement object
+			Statement s = connect.createStatement();
+
+			// Check whether the customer exists (and lock him/her as if the delete option were available
+			ResultSet rCustomer = s.executeQuery("SELECT * FROM Customer WHERE customerid = "+customerID+" FOR UPDATE;");
+			// No customer exists
+			if (!rCustomer.isBeforeFirst()){
+				connect.rollback();
+				return book + "\n\tNo such customer ID: " + customerID;
+			}
+			// Check if the book exists
+			ResultSet rBook = s.executeQuery("SELECT * FROM Book WHERE isbn = "+ isbn +";");
+			// No book exists
+			if (!rBook.isBeforeFirst()){
+				connect.rollback();
+				return book + "\n\tNo such ISBN: " + isbn;
+			}
+			// Lock if customer has borrowed the book
+			ResultSet rBorrow = s.executeQuery("SELECT * FROM Cust_Book WHERE isbn = "+ isbn +"AND customerID = " + customerID +" FOR UPDATE;");
+			// Customer hasn't borrowed the book
+			if (!rBorrow.isBeforeFirst()){
+				connect.rollback();
+				return book + "\n\tThis customer has not borrowed the book: " + isbn;
+			}
+
+			// Insert appropriate tuple in the Cust_Book table
+			String delete = "DELETE FROM Cust_Book WHERE isbn = " + isbn + " AND customerID = " + customerID + ";";
+			s.executeUpdate(delete);
+			// Dialog box - to stall the processing of the program 
+			JOptionPane.showMessageDialog(dialogParent, "Book Returned.");
+			// Update the Book table
+			String update = "UPDATE Book SET NumLeft = NumLeft + 1 WHERE isbn =" + isbn + ";";
+			s.executeUpdate(update);
+			// Commit the transaction (if actions were all successful, otherwise rollback)
+			connect.commit();
+			connect.setAutoCommit(true);
+
+			return book + "\n\tYou have returned the book. ";
+			// End of the try block
+		} catch (SQLException sqlex){
+			System.out.println(sqlex.getMessage());
+		}
+
+		try {
+			// If actions were not all successful, rollback
+			connect.rollback();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		// Only path left is that customer is already borrowing the book
+		return book;
 	}
 
 	public void closeDBConnection() {
