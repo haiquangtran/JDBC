@@ -223,7 +223,38 @@ public class LibraryModel {
 	}
 
 	public String showCustomer(int customerID) {
-		return "Show Customer Stub";
+		String customer = "Show Customer:";
+
+		try {
+			// Create a Statement object
+			Statement s = connect.createStatement();
+			// Execute the Statement object
+			ResultSet rs = s.executeQuery(
+					"SELECT * FROM "
+							+ "(SELECT STRING_AGG(isbn ||' - ' ||title, '\n\t\t' ORDER BY isbn ASC) AS booksBorrowed "
+							+ "FROM Cust_Book NATURAL JOIN Book WHERE customerid =" + customerID + ") AS booksBorrowedTable NATURAL JOIN Customer "
+							+ "WHERE customerid =" + customerID + ";"
+					);
+			if (!rs.isBeforeFirst()){
+				return customer + "\n\tNo such customer ID: " + customerID;
+			}
+			// Handle query answer in ResultSet object
+			while (rs.next()){
+				//Format the answer
+				customer += String.format("\n\t%d: %s, %s - %s\n\tBooks Borrowed:\n\t\t%s",
+						rs.getInt("customerid"), rs.getString("L_Name").trim(), rs.getString("F_Name").trim(),
+						//Check if city exists - prints appropriate message
+						rs.getString("city") == null? "(no city)" : rs.getString("city"),
+						//Check if customer has borrowed any books - prints appropriate message
+						rs.getString("booksBorrowed") == null? "(No books borrowed)" : rs.getString("booksBorrowed"));
+			}
+
+			// End of the try block
+		} catch (SQLException sqlex){
+			System.out.println(sqlex.getMessage());
+		}
+
+		return customer;
 	}
 
 	public String showAllCustomers() {
