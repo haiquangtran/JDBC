@@ -227,7 +227,34 @@ public class LibraryModel {
 	}
 
 	public String showAllCustomers() {
-		return "Show All Customers Stub";
+		String customers = "Show All Customers:";
+
+		try {
+			// Create a Statement object
+			Statement s = connect.createStatement();
+			// Execute the Statement object
+			ResultSet rs = s.executeQuery(
+					"SELECT * FROM customer ORDER BY customerid ASC;"
+					);
+			// Result is empty
+			if (!rs.isBeforeFirst()){
+				return customers + "\n\t(No Customers)";
+			}
+			// Handle query answer in ResultSet object
+			while (rs.next()){
+				//Format the answer
+				customers += String.format("\n\t%d: %s, %s - %s", rs.getInt("customerId"), rs.getString("L_Name").trim(),
+						rs.getString("F_Name").trim(),
+						//Check if city exists - prints appropriate message
+						rs.getString("city") == null? "(no city)" : rs.getString("city"));
+			}
+
+			// End of the try block
+		} catch (SQLException sqlex){
+			System.out.println(sqlex.getMessage());
+		}
+
+		return customers;
 	}
 
 	public String borrowBook(int isbn, int customerID,
