@@ -68,7 +68,9 @@ public class LibraryModel {
 						+ "\t%d: %s \n"
 						+ "\tEdition: %d - Number of copies: %d - Copies left: %d\n"
 						+ "\tAuthors: %s", rs.getInt("isbn"),rs.getString("title"),rs.getInt("Edition_No"),
-						rs.getInt("numOfCop"),rs.getInt("numLeft"),rs.getString("authorNames"));
+						rs.getInt("numOfCop"),rs.getInt("numLeft"),
+						//Check if there are any authors - prints appropriate message
+						rs.getString("authorNames") == null? "(No authors)": rs.getString("authorNames"));
 			}
 
 			// End of the try block
@@ -160,11 +162,64 @@ public class LibraryModel {
 	}
 
 	public String showAuthor(int authorID) {
-		return "Show Author Stub";
+		String author = "Show Author:";
+
+		try {
+			// Create a Statement object
+			Statement s = connect.createStatement();
+			// Execute the Statement object
+			ResultSet rs = s.executeQuery(
+					"SELECT * FROM "
+							+"(SELECT STRING_AGG(isbn ||' - ' ||title, '\n\t\t' ORDER BY isbn ASC) AS allTitles "
+							+"FROM Book_Author NATURAL JOIN Book WHERE authorid ="+ authorID + ") AS allBooks NATURAL JOIN Author "
+							+"WHERE authorid =" + authorID + ";"
+					);
+			if (!rs.isBeforeFirst()){
+				return author + "\n\tNo such author ID: " + authorID;
+			}
+			// Handle query answer in ResultSet object
+			while (rs.next()){
+				//Format the answer
+				author += String.format("\n\t%d: %s %s\n\tBooks written:\n\t\t%s",
+						rs.getInt("authorId"), rs.getString("name").trim(), rs.getString("surname").trim(),
+						//Check if author has written any books - prints appropriate message
+						rs.getString("allTitles") == null? "(no books written)" : rs.getString("allTitles"));
+			}
+
+			// End of the try block
+		} catch (SQLException sqlex){
+			System.out.println(sqlex.getMessage());
+		}
+
+		return author;
 	}
 
 	public String showAllAuthors() {
-		return "Show All Authors Stub";
+		String authors = "Show All Authors:";
+
+		try {
+			// Create a Statement object
+			Statement s = connect.createStatement();
+			// Execute the Statement object
+			ResultSet rs = s.executeQuery(
+					"SELECT * FROM author ORDER BY authorid ASC;"
+					);
+			// Result is empty
+			if (!rs.isBeforeFirst()){
+				return authors + "\n\t(No Authors)";
+			}
+			// Handle query answer in ResultSet object
+			while (rs.next()){
+				//Format the answer
+				authors += String.format("\n\t%d: %s, %s ", rs.getInt("authorId"), rs.getString("surname").trim(), rs.getString("name").trim());
+			}
+
+			// End of the try block
+		} catch (SQLException sqlex){
+			System.out.println(sqlex.getMessage());
+		}
+
+		return authors;
 	}
 
 	public String showCustomer(int customerID) {
