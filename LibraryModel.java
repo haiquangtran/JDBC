@@ -245,8 +245,8 @@ public class LibraryModel {
 						rs.getInt("customerid"), rs.getString("L_Name").trim(), rs.getString("F_Name").trim(),
 						//Check if city exists - prints appropriate message
 						rs.getString("city") == null? "(no city)" : rs.getString("city"),
-						//Check if customer has borrowed any books - prints appropriate message
-						rs.getString("booksBorrowed") == null? "(No books borrowed)" : rs.getString("booksBorrowed"));
+								//Check if customer has borrowed any books - prints appropriate message
+								rs.getString("booksBorrowed") == null? "(No books borrowed)" : rs.getString("booksBorrowed"));
 			}
 
 			// End of the try block
@@ -290,7 +290,41 @@ public class LibraryModel {
 
 	public String borrowBook(int isbn, int customerID,
 			int day, int month, int year) {
-		return "Borrow Book Stub";
+		String book = "Borrow Book:";
+
+		try {
+			// Create a Statement object
+			Statement s = connect.createStatement();
+
+			// Check whether Book exists
+			ResultSet rBook = s.executeQuery("SELECT * FROM Book WHERE isbn = "+isbn+";");
+
+			// No book exists
+			if (!rBook.isBeforeFirst()){
+				return book + "\n\tNo such ISBN: " + isbn;
+			}
+			//
+			while (rBook.next()){
+				// No copies of the book are left
+				if (rBook.getInt("numLeft") <= 0){
+					return book + "\n\tNot enough copies of book " + isbn + " left";
+				}
+			}
+			// Check whether the customer exists (and lock him/her as if the delete option were available
+			ResultSet rCustomer = s.executeQuery("SELECT * FROM customer WHERE customerid = "+customerID+" FOR UPDATE;");
+			// No customer exists
+			if (!rCustomer.isBeforeFirst()){
+				return book + "\n\tNo such customer ID: " + customerID;
+			}
+
+
+			// End of the try block
+		} catch (SQLException sqlex){
+			System.out.println(sqlex.getMessage());
+		}
+
+
+		return book;
 	}
 
 	public String returnBook(int isbn, int customerid) {
@@ -298,6 +332,7 @@ public class LibraryModel {
 	}
 
 	public void closeDBConnection() {
+
 	}
 
 	public String deleteCus(int customerID) {
