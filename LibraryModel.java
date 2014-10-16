@@ -9,6 +9,8 @@
 import javax.swing.*;
 
 import java.sql.*;
+import java.text.Format;
+import java.text.SimpleDateFormat;
 
 public class LibraryModel {
 
@@ -321,8 +323,8 @@ public class LibraryModel {
 				connect.rollback();
 				return book + "\n\tNo such ISBN: " + isbn;
 			}
+			// No copies of the book are left
 			while (rBook.next()){
-				// No copies of the book are left
 				if (rBook.getInt("numLeft") <= 0){
 					connect.rollback();
 					return book + "\n\tNot enough copies of book " + isbn + " left";
@@ -332,21 +334,24 @@ public class LibraryModel {
 			// Insert appropriate tuple in the Cust_Book table
 			String insert = "INSERT INTO Cust_Book VALUES(" + isbn + "," + String.format("to_date('%d-%d-%d', 'YYYY-MM-DD')", year,month,day) + "," + customerID + ");";
 			s.executeUpdate(insert);
+
 			// Dialog box - to stall the processing of the program
 			JOptionPane.showMessageDialog(dialogParent, "Locked tuple(s), ready to update. Click OK to continue");
+
 			// Update the Book table
 			String update = "UPDATE Book SET NumLeft = NumLeft-1 WHERE isbn =" + isbn + ";";
 			s.executeUpdate(update);
+
 			// Commit the transaction (if actions were all successful, otherwise rollback)
 			connect.commit();
 			connect.setAutoCommit(true);
 
 			// Return the message with correct format
-			ResultSet rMessage = s.executeQuery("SELECT * FROM Cust_Book NATURAL JOIN Customer NATURAL JOIN Book WHERE customerID = " + customerID + " "+ ";");
+			ResultSet rMessage = s.executeQuery("SELECT * FROM Cust_Book NATURAL JOIN Customer NATURAL JOIN Book WHERE customerID = " + customerID + " AND isbn ="+  isbn + ";");
 			while (rMessage.next()){
-				book += String.format("\n\tBook: %d (%s)\n\tLoaned to: %d (%s %s)\n\tDue Date: %d",
-						rMessage.getInt("isbn"),rMessage.getString("title"), rMessage.getInt("customerID"),
-						rMessage.getString("f_name"), rMessage.getString("l_name"),rMessage.getString("duedate"));
+				book += String.format("\n\tBook: %d (%s)\n\tLoaned to: %d (%s %s)\n\tDue Date: %s",
+						rMessage.getInt("isbn"),rMessage.getString("title").trim(), rMessage.getInt("customerID"),
+						rMessage.getString("f_name").trim(), rMessage.getString("l_name").trim(), rMessage.getString("duedate").toString());
 			}
 			s.close();
 
@@ -365,7 +370,7 @@ public class LibraryModel {
 		}
 
 		// Only path left is that customer is already borrowing the book
-		return book + "\n\tCustomer is already borrowing the book. ";
+		return book + "\n\tCustomer "+customerID + " already has book " + isbn + " on loan";
 	}
 
 	public String returnBook(int isbn, int customerID) {
