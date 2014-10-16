@@ -505,7 +505,48 @@ public class LibraryModel {
 	}
 
 	public String deleteAuthor(int authorID) {
-		return "Delete Author";
+		String author = "Delete Author:";
+
+		try {
+			connect.setAutoCommit(false);
+
+			// Create a Statement object
+			Statement s = connect.createStatement();
+
+			// Check if the author exists and lock it for the deletion
+			ResultSet rAuthor = s.executeQuery("SELECT * FROM Author WHERE authorID = "+ authorID +" FOR UPDATE;");
+			// Author doesn't exist
+			if (!rAuthor.isBeforeFirst()){
+				connect.rollback();
+				return author + "\n\tNo such author ID: " + authorID;
+			}
+
+			// Delete Author
+			String delete = "DELETE FROM Author WHERE authorID = " + authorID + ";";
+			String updateAuthor = "UPDATE Book_Author SET authorID = DEFAULT,authorSeqNo = DEFAULT WHERE authorID= " + authorID + ";";
+			s.executeUpdate(delete);
+			s.execute(updateAuthor);
+			// Commit the transaction (if actions were all successful, otherwise rollback)
+			connect.commit();
+			connect.setAutoCommit(true);
+			s.close();
+
+			// Return the message with correct format
+			return author + "\n\tAuthor " + authorID + " has successfully been deleted. ";
+			// End of the try block
+		} catch (SQLException sqlex){
+			System.out.println(sqlex.getMessage());
+		}
+
+		try {
+			// If actions were not all successful, rollback
+			connect.rollback();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		return author + "\n\tCannot delete author " + authorID;
 	}
 
 	public String deleteBook(int isbn) {
