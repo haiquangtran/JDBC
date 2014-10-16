@@ -463,7 +463,7 @@ public class LibraryModel {
 			// Create a Statement object
 			Statement s = connect.createStatement();
 
-			// Check whether the customer exists (and lock him/her as if the delete option were available
+			// Check whether the customer exists (and lock him/her as if the delete option were available)
 			ResultSet rCustomer = s.executeQuery("SELECT * FROM Customer WHERE customerid = " + customerID + " FOR UPDATE;");
 			// No customer exists
 			if (!rCustomer.isBeforeFirst()){
@@ -509,6 +509,55 @@ public class LibraryModel {
 	}
 
 	public String deleteBook(int isbn) {
-		return "Delete Book";
+		String book = "Delete Book:";
+
+		try {
+			connect.setAutoCommit(false);
+
+			// Create a Statement object
+			Statement s = connect.createStatement();
+
+			// Check if the book exists and lock it for the deletion
+			ResultSet rBook = s.executeQuery("SELECT * FROM Book WHERE isbn = "+ isbn +" FOR UPDATE;");
+			// No book exists
+			if (!rBook.isBeforeFirst()){
+				connect.rollback();
+				return book + "\n\tNo such ISBN: " + isbn;
+			}
+			// Check if customer has borrowed this book
+			ResultSet rLock = s.executeQuery("SELECT * FROM Cust_Book WHERE isbn = "+ isbn +";");
+			// Cannot delete the book if it is borrowed
+			if (rLock.isBeforeFirst()){
+				connect.rollback();
+				return book + "\n\tBook " + isbn + " cannot be deleted. Customer(s) have this book on loan";
+			}
+
+			// Delete book
+			String delete = "DELETE FROM Book WHERE isbn = " + isbn + ";";
+			String updateAuthor = "UPDATE Book_Author SET isbn = DEFAULT WHERE isbn = " + isbn + ";";
+			s.executeUpdate(delete);
+			s.execute(updateAuthor);
+			// Commit the transaction (if actions were all successful, otherwise rollback)
+			connect.commit();
+			connect.setAutoCommit(true);
+			s.close();
+
+			// Return the message with correct format
+			return book + "\n\tBook " + isbn + " has successfully been deleted. ";
+			// End of the try block
+		} catch (SQLException sqlex){
+			System.out.println(sqlex.getMessage());
+		}
+
+		try {
+			// If actions were not all successful, rollback
+			connect.rollback();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		return book + "\n\tCannot delete book " + isbn;
 	}
+
 }
