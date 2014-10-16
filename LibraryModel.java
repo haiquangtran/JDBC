@@ -301,7 +301,6 @@ public class LibraryModel {
 		String book = "Borrow Book:";
 
 		try {
-			//BEGIN;
 			connect.setAutoCommit(false);
 
 			// Create a Statement object
@@ -330,6 +329,13 @@ public class LibraryModel {
 					return book + "\n\tNot enough copies of book " + isbn + " left";
 				}
 			}
+			// Check if customer has already borrowed the same book
+			ResultSet rBorrow = s.executeQuery("SELECT * FROM Cust_Book WHERE customerID = " + customerID + " AND isbn = " + isbn + ";");
+			// Customer already borrowing the book
+			if (rBorrow.isBeforeFirst()){
+				connect.rollback();
+				return book + "\n\tCustomer "+customerID + " already has book " + isbn + " on loan";
+			}
 
 			// Insert appropriate tuple in the Cust_Book table
 			String insert = "INSERT INTO Cust_Book VALUES(" + isbn + "," + String.format("to_date('%d-%d-%d', 'YYYY-MM-DD')", year,month,day) + "," + customerID + ");";
@@ -342,10 +348,6 @@ public class LibraryModel {
 			String update = "UPDATE Book SET NumLeft = NumLeft-1 WHERE isbn =" + isbn + ";";
 			s.executeUpdate(update);
 
-			// Commit the transaction (if actions were all successful, otherwise rollback)
-			connect.commit();
-			connect.setAutoCommit(true);
-
 			// Return the message with correct format
 			ResultSet rMessage = s.executeQuery("SELECT * FROM Cust_Book NATURAL JOIN Customer NATURAL JOIN Book WHERE customerID = " + customerID + " AND isbn ="+  isbn + ";");
 			while (rMessage.next()){
@@ -353,6 +355,10 @@ public class LibraryModel {
 						rMessage.getInt("isbn"),rMessage.getString("title").trim(), rMessage.getInt("customerID"),
 						rMessage.getString("f_name").trim(), rMessage.getString("l_name").trim(), rMessage.getString("duedate").toString());
 			}
+
+			// Commit the transaction (if actions were all successful, otherwise rollback)
+			connect.commit();
+			connect.setAutoCommit(true);
 			s.close();
 
 			return book;
@@ -369,15 +375,13 @@ public class LibraryModel {
 			e.printStackTrace();
 		}
 
-		// Only path left is that customer is already borrowing the book
-		return book + "\n\tCustomer "+customerID + " already has book " + isbn + " on loan";
+		return book + "\n\tCustomer "+customerID + " cannot borrow the book " + isbn;
 	}
 
 	public String returnBook(int isbn, int customerID) {
 		String book = "Return Book:";
 
 		try {
-			//BEGIN;
 			connect.setAutoCommit(false);
 
 			// Create a Statement object
@@ -402,22 +406,25 @@ public class LibraryModel {
 			// Customer hasn't borrowed the book
 			if (!rBorrow.isBeforeFirst()){
 				connect.rollback();
-				return book + "\n\tThis customer has not borrowed the book: " + isbn;
+				return book + "\n\tBook " + isbn + " is not loaned to customer " + customerID;
 			}
 
-			// Insert appropriate tuple in the Cust_Book table
+			// Delete appropriate tuple in the Cust_Book table
 			String delete = "DELETE FROM Cust_Book WHERE isbn = " + isbn + " AND customerID = " + customerID + ";";
 			s.executeUpdate(delete);
 			// Dialog box - to stall the processing of the program
-			JOptionPane.showMessageDialog(dialogParent, "Book Returned.");
+			JOptionPane.showMessageDialog(dialogParent, "Book successfully Returned.");
 			// Update the Book table
 			String update = "UPDATE Book SET NumLeft = NumLeft + 1 WHERE isbn =" + isbn + ";";
 			s.executeUpdate(update);
+
 			// Commit the transaction (if actions were all successful, otherwise rollback)
 			connect.commit();
 			connect.setAutoCommit(true);
+			s.close();
 
-			return book + "\n\tYou have returned the book. ";
+			// Return the message with correct format
+			return book + "\n\tBook "+ isbn + " returned for customer " + customerID;
 			// End of the try block
 		} catch (SQLException sqlex){
 			System.out.println(sqlex.getMessage());
@@ -430,9 +437,8 @@ public class LibraryModel {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-
-		// Only path left is that customer is already borrowing the book
-		return book;
+		// Should never get to this path...
+		return book + "\n\tCannot return book.";
 	}
 
 	public void closeDBConnection() {
@@ -449,7 +455,53 @@ public class LibraryModel {
 	}
 
 	public String deleteCus(int customerID) {
-		return "Delete Customer";
+		String customer = "Delete Customer:";
+
+		try {
+			connect.setAutoCommit(false);
+
+			// Create a Statement object
+			Statement s = connect.createStatement();
+
+			// Check whether the customer exists (and lock him/her as if the delete option were available
+			ResultSet rCustomer = s.executeQuery("SELECT * FROM Customer WHERE customerid = " + customerID + " FOR UPDATE;");
+			// No customer exists
+			if (!rCustomer.isBeforeFirst()){
+				connect.rollback();
+				return customer + "\n\tNo such customer ID: " + customerID;
+			}
+			// Check if customer has book out
+			ResultSet rCus = s.executeQuery("SELECT * FROM Cust_Book WHERE customerid = " + customerID + ";");
+			// Cannot delete a customer if they have a book out
+			if (rCus.isBeforeFirst()){
+				connect.rollback();
+				return customer + "\n\tCustomer " + customerID + " cannot be deleted because they have books on loan";
+			}
+			// Delete customer
+			String delete = "DELETE FROM Customer WHERE customerID = " + customerID + ";";
+			s.executeUpdate(delete);
+
+			// Commit the transaction (if actions were all successful, otherwise rollback)
+			connect.commit();
+			connect.setAutoCommit(true);
+			s.close();
+
+			// Return the message with correct format
+			return customer + "\n\tCustomer" + customerID + " has successfully been deleted. ";
+			// End of the try block
+		} catch (SQLException sqlex){
+			System.out.println(sqlex.getMessage());
+		}
+
+		try {
+			// If actions were not all successful, rollback
+			connect.rollback();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		return customer + "\n\tCannot delete customer " + customerID;
 	}
 
 	public String deleteAuthor(int authorID) {
