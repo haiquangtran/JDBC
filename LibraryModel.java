@@ -373,6 +373,15 @@ public class LibraryModel {
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} finally {
+			try {
+				if (connect != null){
+					connect.setAutoCommit(true);
+				}
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 
 		return book + "\n\tCustomer "+customerID + " cannot borrow the book " + isbn;
@@ -436,6 +445,15 @@ public class LibraryModel {
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} finally {
+			try {
+				if (connect != null){
+					connect.setAutoCommit(true);
+				}
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 		// Should never get to this path...
 		return book + "\n\tCannot return book.";
@@ -499,9 +517,18 @@ public class LibraryModel {
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} finally {
+			try {
+				if (connect != null){
+					connect.setAutoCommit(true);
+				}
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 
-		return customer + "\n\tCannot delete customer " + customerID;
+		return customer + "\n\tCannot delete customer " + customerID + " due to UNIQUE the constraints on the database.";
 	}
 
 	public String deleteAuthor(int authorID) {
@@ -544,9 +571,18 @@ public class LibraryModel {
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} finally {
+			try {
+				if (connect != null){
+					connect.setAutoCommit(true);
+				}
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 
-		return author + "\n\tCannot delete author " + authorID;
+		return author + "\n\tCannot delete author " + authorID + " due to the UNIQUE constraints on the database.";
 	}
 
 	public String deleteBook(int isbn) {
@@ -584,7 +620,7 @@ public class LibraryModel {
 			s.close();
 
 			// Return the message with correct format
-			return book + "\n\tBook " + isbn + " has successfully been deleted. ";
+			return book + "\n\tBook " + isbn + " has successfully been deleted.";
 			// End of the try block
 		} catch (SQLException sqlex){
 			System.out.println(sqlex.getMessage());
@@ -596,9 +632,18 @@ public class LibraryModel {
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} finally {
+			try {
+				if (connect != null){
+					connect.setAutoCommit(true);
+				}
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 
-		return book + "\n\tCannot delete book " + isbn;
+		return book + "\n\tCannot delete book " + isbn + " due to the UNIQUE constraints on the database.";
 	}
 
 }
